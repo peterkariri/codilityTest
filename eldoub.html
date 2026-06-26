@@ -1,0 +1,779 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Eldoub DSA Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0E1116; --surface:#161B22; --surface-2:#1C232C; --line:#2A323D;
+    --text:#E6EDF3; --muted:#8B949E; --faint:#6B7785;
+    --amber:#F2A33C;
+    --simple:#4ADE80; --inter:#FBBF24; --hard:#F87171;
+    --lang:#E8C45A;            /* recolored by JS/Python toggle */
+    --lang-soft:rgba(232,196,90,.12);
+    --radius:14px;
+    --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+    --sans:"Inter",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--ink);color:var(--text);font-family:var(--sans);line-height:1.55;
+    -webkit-font-smoothing:antialiased;background-image:radial-gradient(900px 500px at 85% -10%,rgba(242,163,60,.06),transparent 60%);}
+  a{color:inherit}
+  .wrap{max-width:960px;margin:0 auto;padding:0 20px}
+
+  /* ---- top bar ---- */
+  header{position:sticky;top:0;z-index:30;background:rgba(14,17,22,.82);backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line)}
+  .bar{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:14px 0}
+  .brand{display:flex;align-items:baseline;gap:10px;margin-right:auto}
+  .brand .dot{font-family:var(--mono);color:var(--lang);font-weight:700;transition:color .3s}
+  .brand b{font-weight:700;letter-spacing:-.02em;font-size:1.05rem}
+  .brand span{color:var(--faint);font-family:var(--mono);font-size:.72rem;letter-spacing:.04em;text-transform:uppercase}
+
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--surface)}
+  .seg button{appearance:none;border:0;background:transparent;color:var(--muted);font-family:var(--mono);
+    font-size:.8rem;font-weight:600;padding:8px 14px;cursor:pointer;transition:.18s;letter-spacing:.02em}
+  .seg button:hover{color:var(--text)}
+  .seg button[aria-pressed="true"]{background:var(--lang-soft);color:var(--lang)}
+  .seg.lang button[aria-pressed="true"]{box-shadow:inset 0 -2px 0 var(--lang)}
+
+  .switch{display:inline-flex;align-items:center;gap:9px;font-family:var(--mono);font-size:.76rem;color:var(--muted);cursor:pointer;user-select:none}
+  .switch input{position:absolute;opacity:0;pointer-events:none}
+  .track{width:38px;height:21px;border-radius:20px;background:var(--surface-2);border:1px solid var(--line);position:relative;transition:.2s}
+  .track::after{content:"";position:absolute;top:2px;left:2px;width:15px;height:15px;border-radius:50%;background:var(--faint);transition:.2s}
+  .switch input:checked + .track{background:var(--lang-soft);border-color:var(--lang)}
+  .switch input:checked + .track::after{transform:translateX(17px);background:var(--lang)}
+  .switch input:focus-visible + .track{outline:2px solid var(--lang);outline-offset:2px}
+
+  /* ---- hero ---- */
+  .hero{padding:46px 0 26px;border-bottom:1px solid var(--line)}
+  .eyebrow{font-family:var(--mono);font-size:.74rem;letter-spacing:.18em;text-transform:uppercase;color:var(--amber);margin:0 0 14px}
+  h1{font-size:clamp(2rem,6vw,3.1rem);line-height:1.02;letter-spacing:-.03em;margin:0 0 16px;font-weight:700}
+  h1 em{font-style:normal;color:var(--lang);transition:color .3s}
+  .lede{color:var(--muted);max-width:62ch;margin:0;font-size:1.02rem}
+  .counts{display:flex;gap:22px;flex-wrap:wrap;margin-top:24px;font-family:var(--mono);font-size:.8rem}
+  .counts b{font-size:1.5rem;display:block;letter-spacing:-.02em}
+  .counts .c-s b{color:var(--simple)} .counts .c-i b{color:var(--inter)} .counts .c-h b{color:var(--hard)}
+  .counts span{color:var(--faint);text-transform:uppercase;letter-spacing:.08em;font-size:.68rem}
+
+  /* ---- tier nav ---- */
+  .tiernav{display:flex;gap:8px;flex-wrap:wrap;padding:22px 0 6px;position:sticky;top:57px;z-index:20;background:rgba(14,17,22,.82);backdrop-filter:blur(10px)}
+  .chip{font-family:var(--mono);font-size:.78rem;font-weight:600;padding:7px 13px;border-radius:999px;border:1px solid var(--line);
+    background:var(--surface);color:var(--muted);cursor:pointer;transition:.16s}
+  .chip:hover{color:var(--text);border-color:var(--faint)}
+  .chip[aria-pressed="true"]{color:var(--ink);background:var(--text);border-color:var(--text)}
+
+  /* ---- tier section ---- */
+  .tier{padding:34px 0 6px}
+  .tier-head{display:flex;align-items:center;gap:12px;margin-bottom:6px}
+  .tier-head .tag{width:11px;height:11px;border-radius:3px}
+  .tier-head h2{font-size:1.35rem;margin:0;letter-spacing:-.01em}
+  .tier-head .meta{font-family:var(--mono);font-size:.74rem;color:var(--faint);margin-left:auto}
+  .tier-desc{color:var(--muted);font-size:.92rem;margin:0 0 18px}
+  .t-simple .tag{background:var(--simple)} .t-inter .tag{background:var(--inter)} .t-hard .tag{background:var(--hard)}
+
+  /* ---- card ---- */
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+    padding:22px 22px 20px;margin-bottom:16px;border-left:3px solid var(--c)}
+  .t-simple .card{--c:var(--simple)} .t-inter .card{--c:var(--inter)} .t-hard .card{--c:var(--hard)}
+  .card-top{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+  .pid{font-family:var(--mono);font-size:.8rem;font-weight:700;color:var(--c);letter-spacing:.04em}
+  .card h3{font-size:1.12rem;margin:0;letter-spacing:-.01em}
+  .narr{color:var(--text);opacity:.92;margin:14px 0 0;font-size:.96rem}
+  .narr b{color:var(--text)}
+
+  .ex{background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin:14px 0 0;font-family:var(--mono);font-size:.82rem;color:#CBD5E1}
+  .ex .lbl{color:var(--amber);text-transform:uppercase;letter-spacing:.1em;font-size:.66rem;display:block;margin-bottom:6px}
+  .ex code{color:var(--lang);transition:color .3s}
+  .ex .ans{color:var(--simple);font-weight:700}
+  .cons{font-family:var(--mono);font-size:.76rem;color:var(--faint);margin:12px 0 0}
+  .cons .lbl{color:var(--muted)}
+
+  /* ---- code ---- */
+  .codewrap{margin-top:16px;border:1px solid var(--line);border-radius:11px;overflow:hidden;background:#0B0E13}
+  .codebar{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--line);background:var(--surface-2)}
+  .codebar .fname{font-family:var(--mono);font-size:.74rem;color:var(--muted)}
+  .codebar .fname .lang-name{color:var(--lang);transition:color .3s}
+  .copy{margin-left:auto;appearance:none;border:1px solid var(--line);background:transparent;color:var(--muted);
+    font-family:var(--mono);font-size:.7rem;padding:4px 10px;border-radius:7px;cursor:pointer;transition:.15s}
+  .copy:hover{color:var(--lang);border-color:var(--lang)}
+  pre{margin:0;padding:15px 16px;overflow-x:auto}
+  code.src{font-family:var(--mono);font-size:.82rem;line-height:1.65;color:#D7DEE8;white-space:pre;display:block}
+
+  /* ---- facilitator key ---- */
+  .key{margin-top:14px;border-top:1px dashed var(--line);padding-top:14px;display:none}
+  body.show-key .key{display:block}
+  .key .lbl{font-family:var(--mono);font-size:.66rem;letter-spacing:.12em;text-transform:uppercase;color:var(--hard);display:block;margin-bottom:8px}
+  .key .row{display:flex;gap:8px;font-size:.86rem;margin:5px 0;color:var(--muted)}
+  .key .row b{color:var(--text);min-width:96px;font-family:var(--mono);font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;flex:none}
+  .key-banner{display:none;background:var(--lang-soft);border:1px solid var(--lang);color:var(--lang);
+    font-family:var(--mono);font-size:.76rem;border-radius:10px;padding:10px 14px;margin:18px 0 0;align-items:center;gap:8px}
+  body.show-key .key-banner{display:flex}
+
+  footer{border-top:1px solid var(--line);margin-top:40px;padding:28px 0 60px;color:var(--faint);font-size:.84rem}
+  footer .grade{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:18px;color:var(--muted)}
+  footer .grade b{color:var(--amber)}
+
+  .hidden{display:none !important}
+  :focus-visible{outline:2px solid var(--lang);outline-offset:3px;border-radius:4px}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto}}
+  @media(max-width:560px){.brand span{display:none}.counts{gap:16px}}
+
+  /* ---- lock button + password modal ---- */
+  .lockbtn{appearance:none;border:1px solid var(--line);background:var(--surface);color:var(--muted);
+    font-family:var(--mono);font-size:.78rem;font-weight:600;padding:8px 14px;border-radius:10px;cursor:pointer;
+    transition:.16s;display:inline-flex;align-items:center;gap:6px}
+  .lockbtn:hover{color:var(--text);border-color:var(--faint)}
+  .lockbtn.on{color:var(--lang);border-color:var(--lang);background:var(--lang-soft)}
+  .modal{position:fixed;inset:0;z-index:80;background:rgba(6,8,11,.72);backdrop-filter:blur(4px);
+    display:flex;align-items:center;justify-content:center;padding:20px}
+  .modal[hidden]{display:none}
+  .modal-card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:26px 24px;
+    max-width:380px;width:100%;box-shadow:0 24px 60px rgba(0,0,0,.5)}
+  .modal-card h4{margin:0 0 8px;font-size:1.1rem;letter-spacing:-.01em}
+  .modal-card p{margin:0 0 16px;color:var(--muted);font-size:.9rem;line-height:1.5}
+  .modal-card input{width:100%;background:var(--ink);border:1px solid var(--line);border-radius:10px;color:var(--text);
+    font-family:var(--mono);font-size:.95rem;padding:11px 13px;outline:none}
+  .modal-card input:focus{border-color:var(--lang)}
+  .modal-err{color:var(--hard);font-family:var(--mono);font-size:.78rem;margin-top:10px}
+  .modal-err[hidden]{display:none}
+  .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:18px}
+  .btn-ghost,.btn-go{appearance:none;border-radius:9px;font-family:var(--mono);font-size:.82rem;font-weight:600;
+    padding:9px 16px;cursor:pointer;transition:.15s;border:1px solid var(--line)}
+  .btn-ghost{background:transparent;color:var(--muted)}
+  .btn-ghost:hover{color:var(--text)}
+  .btn-go{background:var(--lang);color:#10141a;border-color:var(--lang)}
+  .btn-go:hover{filter:brightness(1.08)}
+  .btn-go:disabled{opacity:.6;cursor:wait}
+</style>
+
+<header>
+  <div class="wrap bar">
+    <div class="brand"><span class="dot">&gt;_</span><b>Eldoub DSA Console</b><span>23 problems</span></div>
+    <div class="seg lang" role="group" aria-label="Choose language">
+      <button id="js" aria-pressed="true">JavaScript</button>
+      <button id="py" aria-pressed="false">Python</button>
+    </div>
+    <button id="keybtn" class="lockbtn" type="button" aria-haspopup="dialog">🔒 Facilitator key</button>
+  </div>
+</header>
+
+<section class="hero"><div class="wrap">
+  <p class="eyebrow">Eldoret · Today's session</p>
+  <h1>Pick <em>JavaScript</em> or Python.<br>Then make them <em>think</em>.</h1>
+  <p class="lede">An assessment-style problem bank in three tiers. Every problem ships with a starter stub in the language you choose — toggle it up top and the whole console switches. Read the brief, grab the stub, and defend your complexity out loud.</p>
+  <div class="counts">
+    <div class="c-s"><b>6</b><span>Simple</span></div>
+    <div class="c-i"><b>7</b><span>Intermediate</span></div>
+    <div class="c-h"><b>10</b><span>Hard</span></div>
+  </div>
+</div></section>
+
+<div class="wrap">
+  <nav class="tiernav" aria-label="Filter by tier">
+    <button class="chip" data-filter="all" aria-pressed="true">All</button>
+    <button class="chip" data-filter="simple" aria-pressed="false">🟢 Simple</button>
+    <button class="chip" data-filter="inter" aria-pressed="false">🟡 Intermediate</button>
+    <button class="chip" data-filter="hard" aria-pressed="false">🔴 Hard</button>
+  </nav>
+
+  <div class="key-banner">🔑 Facilitator key is visible — hide it before sharing your screen with learners.</div>
+
+  <main id="board"></main>
+
+  <footer>
+    <div class="grade">
+      <b>Blunting copy-paste AI during the session:</b> no editor/autocomplete for the first 10 minutes (pen-and-paper design only); require a hand-traced dry run on a <em>second</em> example before any code; grade ~40% on a 2-minute verbal defense of complexity plus one counter-example. The reasoning is what AI can't fake live.
+    </div>
+    Eldoub session bank · function names follow the spec in JavaScript and idiomatic snake_case in Python.
+  </footer>
+</div>
+
+<div id="pwmodal" class="modal" hidden>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="pwtitle">
+    <h4 id="pwtitle">Facilitator access</h4>
+    <p>Enter the session password to reveal techniques, complexity targets, and gotchas.</p>
+    <input id="pwinput" type="password" placeholder="Password" autocomplete="off" spellcheck="false">
+    <div class="modal-err" id="pwerr" hidden>Wrong password — try again.</div>
+    <div class="modal-actions">
+      <button id="pwcancel" type="button" class="btn-ghost">Cancel</button>
+      <button id="pwgo" type="button" class="btn-go">Unlock</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ---------------- DATA ---------------- */
+const P = [
+/* === SIMPLE === */
+{id:"S1",tier:"simple",fn:"findPair",title:"Access Badge Pair",
+ narr:"A security log holds badge values <b>badge[0…n-1]</b>. Two employees can enter together only if their badges sum to exactly <b>target</b>. Return the indices of any valid pair, or [-1,-1].",
+ ex:'badge = [2, 7, 11, 15], target = 9', ans:'[0, 1]  (2 + 7 = 9)',
+ cons:"2 ≤ n ≤ 10^5; at most one valid pair.",
+ js:`/**
+ * @param {number[]} badge
+ * @param {number} target
+ * @returns {number[]} [i, j] or [-1, -1]
+ */
+function findPair(badge, target) {
+  // TODO
+  return [-1, -1];
+}`,
+ py:`from typing import List
+
+def find_pair(badge: List[int], target: int) -> List[int]:
+    """Return indices [i, j] summing to target, or [-1, -1]."""
+    # TODO
+    return [-1, -1]`},
+
+{id:"S2",tier:"simple",fn:"reverseWords",title:"Message Word Reverse",
+ narr:"A status message is words separated by single spaces. Return the message with the <b>word order reversed</b> (letters inside each word unchanged).",
+ ex:'message = "the sky is blue"', ans:'"blue is sky the"',
+ cons:"1 ≤ |message| ≤ 10^4; no leading/trailing/double spaces.",
+ js:`/**
+ * @param {string} message
+ * @returns {string}
+ */
+function reverseWords(message) {
+  // TODO
+  return "";
+}`,
+ py:`def reverse_words(message: str) -> str:
+    # TODO
+    return ""`},
+
+{id:"S3",tier:"simple",fn:"runnerUp",title:"Runner-Up Score",
+ narr:"A leaderboard holds scores (duplicates allowed). Return the <b>second-highest distinct</b> score, or -1 if there is none.",
+ ex:'score = [4, 1, 4, 3]', ans:'3  (distinct: 4, 3, 1)',
+ cons:"1 ≤ n ≤ 10^5.",
+ js:`/**
+ * @param {number[]} score
+ * @returns {number}
+ */
+function runnerUp(score) {
+  // TODO
+  return -1;
+}`,
+ py:`from typing import List
+
+def runner_up(score: List[int]) -> int:
+    # TODO
+    return -1`},
+
+{id:"S4",tier:"simple",fn:"firstUnique",title:"First Unique Character",
+ narr:"A username is a lowercase string. Return the <b>index of the first character that appears exactly once</b>. If all repeat, return -1.",
+ ex:'username = "swiss"', ans:"1  ('w' is first unique)",
+ cons:"1 ≤ |username| ≤ 10^5; lowercase letters.",
+ js:`/**
+ * @param {string} username
+ * @returns {number}
+ */
+function firstUnique(username) {
+  // TODO
+  return -1;
+}`,
+ py:`def first_unique(username: str) -> int:
+    # TODO
+    return -1`},
+
+{id:"S5",tier:"simple",fn:"isBalanced",title:"Balanced Brackets",
+ narr:"A formula uses (), [], {}. It is <b>balanced</b> if every opener is closed by the matching type in the correct order. Return true or false.",
+ ex:'formula = "([)]"', ans:"false   ·   ()[]{} → true",
+ cons:"1 ≤ |formula| ≤ 10^4; only bracket chars.",
+ js:`/**
+ * @param {string} formula
+ * @returns {boolean}
+ */
+function isBalanced(formula) {
+  // TODO
+  return false;
+}`,
+ py:`def is_balanced(formula: str) -> bool:
+    # TODO
+    return False`},
+
+{id:"S6",tier:"simple",fn:"settleZeros",title:"Settle the Zeros",
+ narr:"Inventory array <b>stock</b> lists units per shelf; empty shelves are 0. Move <b>all zeros to the end</b> in place, keeping the relative order of non-zero values.",
+ ex:'stock = [0, 1, 0, 3, 12]', ans:'[1, 3, 12, 0, 0]',
+ cons:"1 ≤ n ≤ 10^5; aim for O(n) time, O(1) extra space.",
+ js:`/**
+ * @param {number[]} stock - modified in place
+ * @returns {number[]}
+ */
+function settleZeros(stock) {
+  // TODO
+  return stock;
+}`,
+ py:`from typing import List
+
+def settle_zeros(stock: List[int]) -> List[int]:
+    # TODO: modify in place
+    return stock`},
+
+/* === INTERMEDIATE === */
+{id:"I1",tier:"inter",fn:"maxStreak",title:"Best Trading Streak",
+ narr:"Daily values <b>pnl</b> can be negative. Find the <b>maximum sum of any contiguous streak</b>. At least one day must be chosen.",
+ ex:'pnl = [-2, 1, -3, 4, -1, 2, 1, -5, 4]', ans:'6  ([4, -1, 2, 1])',
+ cons:"1 ≤ n ≤ 10^5; -10^4 ≤ pnl[i] ≤ 10^4.",
+ js:`/**
+ * @param {number[]} pnl
+ * @returns {number}
+ */
+function maxStreak(pnl) {
+  // TODO
+  return 0;
+}`,
+ py:`from typing import List
+
+def max_streak(pnl: List[int]) -> int:
+    # TODO
+    return 0`},
+
+{id:"I2",tier:"inter",fn:"searchRotated",title:"Rotated Catalogue Search",
+ narr:"A sorted array of distinct IDs was rotated at an unknown pivot. Given the rotated array and a <b>target</b>, return its index or -1. Required: O(log n).",
+ ex:'ids = [4, 5, 6, 7, 0, 1, 2], target = 0', ans:'4',
+ cons:"1 ≤ n ≤ 10^5; all distinct.",
+ js:`/**
+ * @param {number[]} ids
+ * @param {number} target
+ * @returns {number}
+ */
+function searchRotated(ids, target) {
+  // TODO
+  return -1;
+}`,
+ py:`from typing import List
+
+def search_rotated(ids: List[int], target: int) -> int:
+    # TODO
+    return -1`},
+
+{id:"I3",tier:"inter",fn:"groupAnagrams",title:"Group the Anagrams",
+ narr:"Group together all words that are <b>anagrams</b> of one another (same letters, any order). Return the groups in any order.",
+ ex:'["eat","tea","tan","ate","nat","bat"]', ans:'[["eat","tea","ate"],["tan","nat"],["bat"]]',
+ cons:"1 ≤ words.length ≤ 10^4; total chars ≤ 10^5.",
+ js:`/**
+ * @param {string[]} words
+ * @returns {string[][]}
+ */
+function groupAnagrams(words) {
+  // TODO
+  return [];
+}`,
+ py:`from typing import List
+
+def group_anagrams(words: List[str]) -> List[List[str]]:
+    # TODO
+    return []`},
+
+{id:"I4",tier:"inter",fn:"countIslands",title:"Count the Islands",
+ narr:"A grid of 0 (water) and 1 (land). An <b>island</b> is 1s connected horizontally or vertically. Count the islands.",
+ ex:'[[1,1,0,0],[1,0,0,1],[0,0,1,1]]', ans:'2',
+ cons:"1 ≤ rows, cols ≤ 1000.",
+ js:`/**
+ * @param {number[][]} grid
+ * @returns {number}
+ */
+function countIslands(grid) {
+  // TODO
+  return 0;
+}`,
+ py:`from typing import List
+
+def count_islands(grid: List[List[int]]) -> int:
+    # TODO
+    return 0`},
+
+{id:"I5",tier:"inter",fn:"longestClean",title:"Longest Clean Window",
+ narr:"A keystroke log is a string. Find the <b>length of the longest contiguous substring with no repeated character</b>.",
+ ex:'log = "abcabcbb"', ans:'3  ("abc")',
+ cons:"1 ≤ |log| ≤ 10^5.",
+ js:`/**
+ * @param {string} log
+ * @returns {number}
+ */
+function longestClean(log) {
+  // TODO
+  return 0;
+}`,
+ py:`def longest_clean(log: str) -> int:
+    # TODO
+    return 0`},
+
+{id:"I6",tier:"inter",fn:"minCoins",title:"Minimum Coin Refund",
+ narr:"Unlimited coins of denominations <b>coin</b>. Return the <b>fewest coins</b> summing to <b>amount</b>, or -1 if impossible.",
+ ex:'coin = [1, 3, 4], amount = 6', ans:'2  (3 + 3)',
+ cons:"1 ≤ m ≤ 100; 1 ≤ coin[i] ≤ 10^4; 0 ≤ amount ≤ 10^4.",
+ js:`/**
+ * @param {number[]} coin
+ * @param {number} amount
+ * @returns {number}
+ */
+function minCoins(coin, amount) {
+  // TODO
+  return -1;
+}`,
+ py:`from typing import List
+
+def min_coins(coin: List[int], amount: int) -> int:
+    # TODO
+    return -1`},
+
+{id:"I7",tier:"inter",fn:"canFinish",title:"Course Prerequisites",
+ narr:"n courses (0…n-1). <b>prereq[j] = [a, b]</b> means course a needs b first. Return true if all courses can be completed, false if there's a cycle.",
+ ex:'n = 2, prereq = [[1,0],[0,1]]', ans:'false  (cycle)',
+ cons:"1 ≤ n ≤ 10^5; 0 ≤ prereq.length ≤ 2×10^5.",
+ js:`/**
+ * @param {number} n
+ * @param {number[][]} prereq
+ * @returns {boolean}
+ */
+function canFinish(n, prereq) {
+  // TODO
+  return false;
+}`,
+ py:`from typing import List
+
+def can_finish(n: int, prereq: List[List[int]]) -> bool:
+    # TODO
+    return False`},
+
+/* === HARD === */
+{id:"H1",tier:"hard",fn:"getMinimumConflicts",title:"Telemetry Stream Merge",
+ narr:"Two streams <b>primary</b> and <b>secondary</b> merge into one log, preserving the order inside each stream. Lower alphabetical = higher priority. A <b>conflict</b> is a lower-priority event placed before a higher-priority one. Find the minimum conflicts over every valid merge.",
+ ex:'primary = "ba", secondary = "a"', ans:'1  ("aba")',
+ cons:"1 ≤ |primary|, |secondary| ≤ 2000.",
+ js:`/**
+ * @param {string} primary
+ * @param {string} secondary
+ * @returns {number}
+ */
+function getMinimumConflicts(primary, secondary) {
+  // TODO
+  return 0;
+}`,
+ py:`def get_minimum_conflicts(primary: str, secondary: str) -> int:
+    # TODO
+    return 0`},
+
+{id:"H2",tier:"hard",fn:"maxThroughput",title:"Server Tower Stacking",
+ narr:"Server i has footprint <b>width[i]</b> and throughput <b>value[i]</b>. Build a tower from a subsequence (original order kept) whose footprints are <b>strictly increasing</b>. Maximize total throughput.",
+ ex:'width=[3,1,4,1,5], value=[10,5,20,8,2]', ans:'32  (indices 0,2,4)',
+ cons:"1 ≤ n ≤ 10^5; 1 ≤ width ≤ 10^9; 1 ≤ value ≤ 10^4.",
+ js:`/**
+ * @param {number[]} width
+ * @param {number[]} value
+ * @returns {number}
+ */
+function maxThroughput(width, value) {
+  // TODO
+  return 0;
+}`,
+ py:`from typing import List
+
+def max_throughput(width: List[int], value: List[int]) -> int:
+    # TODO
+    return 0`},
+
+{id:"H3",tier:"hard",fn:"maxBookingProfit",title:"Conference Room Revenue",
+ narr:"Booking i runs <b>[start[i], end[i])</b> and pays <b>profit[i]</b>. Choose non-overlapping bookings to maximize profit; ending at t and starting at t do not overlap.",
+ ex:'start=[1,2,4,6], end=[3,5,6,7], profit=[50,20,70,30]', ans:'150  (bookings 0,2,3)',
+ cons:"1 ≤ n ≤ 10^5; 0 ≤ start < end ≤ 10^9; 1 ≤ profit ≤ 10^4.",
+ js:`/**
+ * @param {number[]} start
+ * @param {number[]} end
+ * @param {number[]} profit
+ * @returns {number}
+ */
+function maxBookingProfit(start, end, profit) {
+  // TODO
+  return 0;
+}`,
+ py:`from typing import List
+
+def max_booking_profit(start: List[int], end: List[int], profit: List[int]) -> int:
+    # TODO
+    return 0`},
+
+{id:"H4",tier:"hard",fn:"minGridCost",title:"Island Power Grid",
+ narr:"n islands need power; cable <b>[u, v, cost]</b> connects islands u and v. Power flows through connected islands. Find the minimum total cost to connect all islands, or -1.",
+ ex:'n=4, cables=[[0,1,1],[1,2,2],[0,2,2],[2,3,3]]', ans:'6',
+ cons:"1 ≤ n ≤ 10^5; 0 ≤ cables ≤ 2×10^5; 1 ≤ cost ≤ 10^9.",
+ js:`/**
+ * @param {number} n
+ * @param {number[][]} cables - each [u, v, cost]
+ * @returns {number}
+ */
+function minGridCost(n, cables) {
+  // TODO
+  return -1;
+}`,
+ py:`from typing import List
+
+def min_grid_cost(n: int, cables: List[List[int]]) -> int:
+    # TODO
+    return -1`},
+
+{id:"H5",tier:"hard",fn:"minCapacity",title:"Bandwidth Delivery Windows",
+ narr:"A belt carries n parcels in fixed order; parcel i weighs <b>weight[i]</b>. Ship all within <b>D</b> days; each day loads a contiguous block; the truck capacity is chosen once and reused. Find the smallest such capacity.",
+ ex:'weight=[1,2,3,4,5,6,7,8,9,10], D=5', ans:'15',
+ cons:"1 ≤ D ≤ n ≤ 10^5; 1 ≤ weight ≤ 500.",
+ js:`/**
+ * @param {number[]} weight
+ * @param {number} D
+ * @returns {number}
+ */
+function minCapacity(weight, D) {
+  // TODO
+  return 0;
+}`,
+ py:`from typing import List
+
+def min_capacity(weight: List[int], d: int) -> int:
+    # TODO
+    return 0`},
+
+{id:"H6",tier:"hard",fn:"maxBillboard",title:"Skyline Billboard",
+ narr:"Buildings have heights <b>height</b>. Mount the largest rectangular billboard against a contiguous run; its height ≤ the shortest building in the run, width = buildings spanned. Maximize area.",
+ ex:'height = [2, 1, 5, 6, 2, 3]', ans:'10  (5×2 over buildings 5,6)',
+ cons:"1 ≤ n ≤ 10^5; 0 ≤ height ≤ 10^9.",
+ js:`/**
+ * @param {number[]} height
+ * @returns {number}
+ */
+function maxBillboard(height) {
+  // TODO
+  return 0;
+}`,
+ py:`from typing import List
+
+def max_billboard(height: List[int]) -> int:
+    # TODO
+    return 0`},
+
+{id:"H7",tier:"hard",fn:"longestStableWindow",title:"Stable Sensor Window",
+ narr:"Readings <b>reading</b>. A window is stable if max − min ≤ <b>k</b>. Find the longest contiguous stable window's length.",
+ ex:'reading = [10,1,2,4,7,2], k = 5', ans:'4  ([2,4,7,2])',
+ cons:"1 ≤ n ≤ 10^5; 0 ≤ reading ≤ 10^9; 0 ≤ k ≤ 10^9.",
+ js:`/**
+ * @param {number[]} reading
+ * @param {number} k
+ * @returns {number}
+ */
+function longestStableWindow(reading, k) {
+  // TODO
+  return 0;
+}`,
+ py:`from typing import List
+
+def longest_stable_window(reading: List[int], k: int) -> int:
+    # TODO
+    return 0`},
+
+{id:"H8",tier:"hard",fn:"minDeletionsToPalindrome",title:"Genome Symmetry Repair",
+ narr:"A DNA fragment <b>gene</b> becomes stable only when it's a palindrome. Each deletion costs 1. Find the minimum deletions to make it a palindrome.",
+ ex:'gene = "aebcbda"', ans:'2  (→ "abcba")',
+ cons:"1 ≤ |gene| ≤ 2000; lowercase letters.",
+ js:`/**
+ * @param {string} gene
+ * @returns {number}
+ */
+function minDeletionsToPalindrome(gene) {
+  // TODO
+  return 0;
+}`,
+ py:`def min_deletions_to_palindrome(gene: str) -> int:
+    # TODO
+    return 0`},
+
+{id:"H9",tier:"hard",fn:"minLatency",title:"Network Latency With Free Upgrades",
+ narr:"Routers 0…n-1; link <b>[u, v, w]</b> is bidirectional with latency w. You hold <b>k</b> coupons; each, applied to one link as you traverse it, sets its latency to 0. Use at most k on a path. Find the minimum latency from 0 to n-1, or -1.",
+ ex:'n=4, links=[[0,1,5],[1,3,5],[0,2,1],[2,3,1]], k=1', ans:'2  (0→2→3)',
+ cons:"2 ≤ n ≤ 10^5; 0 ≤ k ≤ 10; 1 ≤ w ≤ 10^9; ≤ 2×10^5 links.",
+ js:`/**
+ * @param {number} n
+ * @param {number[][]} links - each [u, v, w]
+ * @param {number} k
+ * @returns {number}
+ */
+function minLatency(n, links, k) {
+  // TODO
+  return -1;
+}`,
+ py:`from typing import List
+
+def min_latency(n: int, links: List[List[int]], k: int) -> int:
+    # TODO
+    return -1`},
+
+{id:"H10",tier:"hard",fn:"minAssignmentTime",title:"Vault Task Assignment",
+ narr:"n locks, n technicians; technician i opens lock j in <b>cost[i][j]</b> minutes. Each technician opens exactly one lock; each lock opened once. Minimize total time.",
+ ex:'cost = [[9,2,7],[6,4,3],[5,8,1]]', ans:'9  (t0→l1, t1→l0, t2→l2)',
+ cons:"1 ≤ n ≤ 16; 0 ≤ cost[i][j] ≤ 10^6.",
+ js:`/**
+ * @param {number[][]} cost
+ * @returns {number}
+ */
+function minAssignmentTime(cost) {
+  // TODO
+  return 0;
+}`,
+ py:`from typing import List
+
+def min_assignment_time(cost: List[List[int]]) -> int:
+    # TODO
+    return 0`},
+];
+
+const TIERS = [
+  {key:"simple",cls:"t-simple",name:"Simple",desc:"One concept each — build confidence and speed before the harder tiers."},
+  {key:"inter", cls:"t-inter", name:"Intermediate",desc:"One real technique per problem — the bridge from syntax to algorithms."},
+  {key:"hard",  cls:"t-hard",  name:"Hard",desc:"Multi-step problems where the obvious solution is wrong or too slow."},
+];
+const LANG_COLORS = {js:{c:"#E8C45A",soft:"rgba(232,196,90,.12)",name:"JavaScript",ext:".js"},
+                     py:{c:"#5B9BD5",soft:"rgba(91,155,213,.14)",name:"Python",ext:".py"}};
+
+let lang = load("eldoub-lang","js");
+
+/* ---------------- LOCKED FACILITATOR KEY (AES-256-GCM, PBKDF2) ---------------- */
+const KEY_BLOB = {salt:"hsFk8wd+A9TTcThDqi3fyA==",iv:"836PM5O1mAtPKtcx",iter:200000,ct:"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"};
+let KEYS = null;        // filled only after the correct password decrypts the blob
+let keyVisible = false;
+function b64ToBytes(s){const bin=atob(s);const u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);return u;}
+async function unlockKeys(password){
+  const enc=new TextEncoder();
+  const baseKey=await crypto.subtle.importKey("raw",enc.encode(password),{name:"PBKDF2"},false,["deriveKey"]);
+  const aesKey=await crypto.subtle.deriveKey(
+    {name:"PBKDF2",salt:b64ToBytes(KEY_BLOB.salt),iterations:KEY_BLOB.iter,hash:"SHA-256"},
+    baseKey,{name:"AES-GCM",length:256},false,["decrypt"]);
+  const pt=await crypto.subtle.decrypt({name:"AES-GCM",iv:b64ToBytes(KEY_BLOB.iv)},aesKey,b64ToBytes(KEY_BLOB.ct));
+  return JSON.parse(new TextDecoder().decode(pt));   // throws if the password is wrong
+}
+function esc(s){return String(s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));}
+function keyHTML(id){
+  if(!KEYS || !KEYS[id]) return "";
+  const k=KEYS[id];
+  return `<span class="lbl">Facilitator key</span>
+    <div class="row"><b>Technique</b><span>${esc(k[0])}</span></div>
+    <div class="row"><b>Target</b><span>${esc(k[1])}</span></div>
+    <div class="row"><b>Gotcha</b><span>${esc(k[2])}</span></div>`;
+}
+
+/* ---------------- RENDER ---------------- */
+const board = document.getElementById("board");
+function render(){
+  board.innerHTML = "";
+  for(const t of TIERS){
+    const items = P.filter(p=>p.tier===t.key);
+    const sec = el("section",`tier ${t.cls}`); sec.dataset.tier=t.key; sec.id=t.key;
+    sec.innerHTML = `<div class="tier-head"><span class="tag"></span><h2>${t.name}</h2>
+      <span class="meta">${items.length} problems</span></div><p class="tier-desc">${t.desc}</p>`;
+    for(const p of items) sec.appendChild(card(p));
+    board.appendChild(sec);
+  }
+  paintLang();
+}
+function card(p){
+  const c = el("article","card");
+  const L = LANG_COLORS[lang];
+  c.innerHTML = `
+    <div class="card-top"><span class="pid">${p.id}</span><h3>${p.title}</h3></div>
+    <p class="narr">${p.narr}</p>
+    <div class="ex"><span class="lbl">Example</span>
+      <div><code>${p.ex}</code></div>
+      <div style="margin-top:6px">→ <span class="ans">${p.ans}</span></div></div>
+    <p class="cons"><span class="lbl">Constraints</span> ${p.cons}</p>
+    <div class="codewrap">
+      <div class="codebar"><span class="fname"><span class="lang-name">${L.name}</span> · ${snake(p.fn,lang)}${L.ext}</span>
+        <button class="copy" type="button">Copy</button></div>
+      <pre><code class="src"></code></pre>
+    </div>
+    <div class="key">${keyHTML(p.id)}</div>`;
+  const codeEl = c.querySelector(".src");
+  codeEl.textContent = p[lang];                 // textContent = no escaping needed
+  c.querySelector(".copy").addEventListener("click",e=>{
+    navigator.clipboard.writeText(p[lang]).then(()=>{
+      const b=e.target; const o=b.textContent; b.textContent="Copied ✓";
+      setTimeout(()=>b.textContent=o,1200);
+    }).catch(()=>{});
+  });
+  c.dataset.tier = p.tier;
+  return c;
+}
+function snake(fn,l){ return l==="py" ? fn.replace(/[A-Z]/g,m=>"_"+m.toLowerCase()) : fn; }
+
+/* ---------------- LANGUAGE ---------------- */
+function setLang(l){
+  lang=l; save("eldoub-lang",l);
+  document.getElementById("js").setAttribute("aria-pressed", l==="js");
+  document.getElementById("py").setAttribute("aria-pressed", l==="py");
+  render();
+}
+function paintLang(){
+  const L=LANG_COLORS[lang];
+  document.documentElement.style.setProperty("--lang",L.c);
+  document.documentElement.style.setProperty("--lang-soft",L.soft);
+}
+document.getElementById("js").onclick=()=>setLang("js");
+document.getElementById("py").onclick=()=>setLang("py");
+document.getElementById("js").setAttribute("aria-pressed", lang==="js");
+document.getElementById("py").setAttribute("aria-pressed", lang==="py");
+
+/* ---------------- FACILITATOR LOCK (password-gated) ---------------- */
+const keybtn=document.getElementById("keybtn");
+const modal=document.getElementById("pwmodal");
+const pwinput=document.getElementById("pwinput");
+const pwerr=document.getElementById("pwerr");
+const pwgo=document.getElementById("pwgo");
+function openModal(){pwerr.hidden=true;pwinput.value="";modal.hidden=false;setTimeout(()=>pwinput.focus(),30);}
+function closeModal(){modal.hidden=true;}
+function applyKeyVisibility(){
+  const on = keyVisible && KEYS;
+  document.body.classList.toggle("show-key", on);
+  keybtn.textContent = on ? "🔓 Hide key" : "🔒 Facilitator key";
+  keybtn.classList.toggle("on", !!on);
+}
+keybtn.addEventListener("click",()=>{
+  if(KEYS){ keyVisible=!keyVisible; applyKeyVisibility(); }
+  else openModal();
+});
+document.getElementById("pwcancel").addEventListener("click",closeModal);
+modal.addEventListener("click",e=>{if(e.target===modal)closeModal();});
+document.addEventListener("keydown",e=>{if(!modal.hidden&&e.key==="Escape")closeModal();});
+async function tryUnlock(){
+  const pw=pwinput.value;
+  if(!pw){pwerr.textContent="Enter the password.";pwerr.hidden=false;return;}
+  pwgo.disabled=true;
+  try{
+    KEYS=await unlockKeys(pw);
+    closeModal();
+    keyVisible=true;
+    render();
+    applyKeyVisibility();
+  }catch(err){
+    pwerr.textContent="Wrong password — try again.";
+    pwerr.hidden=false; pwinput.select();
+  }finally{ pwgo.disabled=false; }
+}
+pwgo.addEventListener("click",tryUnlock);
+pwinput.addEventListener("keydown",e=>{if(e.key==="Enter")tryUnlock();});
+
+/* ---------------- TIER FILTER ---------------- */
+const chips=[...document.querySelectorAll(".chip")];
+chips.forEach(ch=>ch.addEventListener("click",()=>{
+  chips.forEach(c=>c.setAttribute("aria-pressed",c===ch));
+  const f=ch.dataset.filter;
+  document.querySelectorAll(".tier").forEach(sec=>{
+    sec.classList.toggle("hidden", f!=="all" && sec.dataset.tier!==f);
+  });
+}));
+
+/* ---------------- helpers ---------------- */
+function el(tag,cls){const e=document.createElement(tag);if(cls)e.className=cls;return e;}
+function save(k,v){try{localStorage.setItem(k,v)}catch(e){}}
+function load(k,d){try{return localStorage.getItem(k)??d}catch(e){return d}}
+
+render();
+</script>
